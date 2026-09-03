@@ -1,28 +1,35 @@
 public import Byte
-public import Byte_Parser
 public import Coder
-public import RFC_9110
+public import Cursor
 public import Parser
+public import RFC_9110
 public import Serializer
+import Byte_Standard_Library_Integration
+import Cursor_Coder
+import Cursor_Parser_OneOf
+import Cursor_Standard_Library_Integration
+import Either
+import Iterator_Coder
+import Parser_Error
 
 extension RFC_9110.Message.Content.Negotiation {
 
     public struct Weighted<Value: Coding>: Coding
     where
-        Value.Input == Byte.Input,
-        Value.Buffer == [Byte],
+        Value.Input: Cursor.`Protocol`<Byte, Never>,
+        Value.Buffer: RangeReplaceableCollection<Byte>,
         Value.Output: Copyable & Escapable
     {
-        public typealias Input = Byte.Input
+        public typealias Input = Value.Input
+
+        public typealias Buffer = Value.Buffer
 
         public typealias Output = (
             value: Value.Output,
             quality: RFC_9110.Message.Content.Negotiation.QualityValue
         )
 
-        public typealias Buffer = [Byte]
-
-        public typealias Failure = RFC_9110.Message.Content.Negotiation.Weighted<Value>.Error
+        public typealias Failure = Error
 
         public let value: Value
 
@@ -30,7 +37,7 @@ extension RFC_9110.Message.Content.Negotiation {
             self.value = value
         }
 
-        public borrowing func parse(_ input: inout Byte.Input) throws(Failure) -> Output {
+        public borrowing func parse(_ input: inout Input) throws(Failure) -> Output {
             let parsed: Value.Output
             do throws(Value.Failure) {
                 parsed = try value.parse(&input)
@@ -38,31 +45,24 @@ extension RFC_9110.Message.Content.Negotiation {
                 throw .value(error)
             }
 
-            let beforeWeight = input.checkpoint
-            Whitespace.skip(&input)
+            let mark = input.checkpoint
+            RFC_9110.OWS.Coder<Input, Buffer>().parse(&input)
             guard let semicolon = input.next(), semicolon.bitPattern == 0x3B else {
-                input.seek(to: beforeWeight)
+                input.seek(to: mark)
                 return (value: parsed, quality: .default)
             }
-            Whitespace.skip(&input)
+            input.seek(to: mark)
 
-            guard let q = input.next(), q.bitPattern == 0x71 || q.bitPattern == 0x51,
-                let equals = input.next(), equals.bitPattern == 0x3D
-            else {
-                throw .weight(.invalidQValue)
-            }
-
-            let quality: RFC_9110.Message.Content.Negotiation.QualityValue
-            do throws(RFC_9110.Message.Content.Negotiation.QualityValue.Coder.Error) {
-                quality = try RFC_9110.Message.Content.Negotiation.QualityValue.Coder().parse(&input)
+            do throws(RFC_9110.Message.Content.Negotiation.Weight.Error) {
+                let quality = try RFC_9110.Message.Content.Negotiation.Weight.Coder<Input, Buffer>().parse(&input)
+                return (value: parsed, quality: quality)
             } catch {
+                input.seek(to: mark)
                 throw .weight(error)
             }
-            Whitespace.skip(&input)
-            return (value: parsed, quality: quality)
         }
 
-        public borrowing func serialize(_ output: Output, into buffer: inout [Byte]) throws(Failure) {
+        public borrowing func serialize(_ output: Output, into buffer: inout Buffer) throws(Failure) {
             do throws(Value.Failure) {
                 try value.serialize(output.value, into: &buffer)
             } catch {
@@ -70,9 +70,8 @@ extension RFC_9110.Message.Content.Negotiation {
             }
 
             guard output.quality != .default else { return }
-            buffer.append(contentsOf: ";q=".utf8.lazy.map(Byte.init(bitPattern:)))
-            do throws(RFC_9110.Message.Content.Negotiation.QualityValue.Coder.Error) {
-                try RFC_9110.Message.Content.Negotiation.QualityValue.Coder()
+            do throws(RFC_9110.Message.Content.Negotiation.Weight.Error) {
+                try RFC_9110.Message.Content.Negotiation.Weight.Coder<Input, Buffer>()
                     .serialize(output.quality, into: &buffer)
             } catch {
                 throw .weight(error)
@@ -85,6 +84,45 @@ extension RFC_9110.Message.Content.Negotiation.Weighted {
 
     public enum Error: Swift.Error {
         case value(Value.Failure)
-        case weight(RFC_9110.Message.Content.Negotiation.QualityValue.Coder.Error)
+        case weight(RFC_9110.Message.Content.Negotiation.Weight.Error)
+    }
+}
+
+extension RFC_9110.Message.Content.Negotiation.Weighted.Error: Equatable where Value.Failure: Equatable {}
+
+extension RFC_9110.Message.Content.Negotiation {
+
+    public enum Weight {}
+}
+
+extension RFC_9110.Message.Content.Negotiation.Weight {
+
+    public struct Coder<Input: Cursor.`Protocol`<Byte, Never>, Buffer: RangeReplaceableCollection<Byte>>: Coding {
+
+        public typealias Failure = RFC_9110.Message.Content.Negotiation.Weight.Error
+
+        public init() {}
+
+        @Coder::Coder.Builder<Input, Buffer>
+        public var body: some Coding<Input, RFC_9110.Message.Content.Negotiation.QualityValue, Buffer, Failure> {
+            Coder::Coder.Sequence(Input.self, Buffer.self) {
+                RFC_9110.OWS.Coder()
+                ";"
+                RFC_9110.OWS.Coder()
+                Parser.OneOf.Two([Byte].Coder("q="), [Byte].Coder("Q="))
+                RFC_9110.Message.Content.Negotiation.QualityValue.Coder()
+            }
+            .error.map { (failure) -> Failure in
+                switch failure {
+                case .right(let error): .quality(error)
+                default: .expectedWeight
+                }
+            }
+        }
+    }
+
+    public enum Error: Swift.Error, Equatable {
+        case expectedWeight
+        case quality(RFC_9110.Message.Content.Negotiation.QualityValue.Error)
     }
 }

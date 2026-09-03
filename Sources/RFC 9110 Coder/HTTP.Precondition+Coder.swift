@@ -1,5 +1,9 @@
 import Byte
-import Byte_Parser
+import Byte_Standard_Library_Integration
+import Cursor_Standard_Library_Integration
+import Coder
+import Iterator_Coder
+import Parser
 import RFC_5322
 public import RFC_9110
 import Standard_Library_Extensions
@@ -47,20 +51,18 @@ extension RFC_9110.Precondition {
     }
 
     private static func entityTags(in headerValue: String) -> [RFC_9110.Entity.Tag]? {
-        var input = Byte.Input(utf8: headerValue)
-        Whitespace.skip(&input)
-
-        if input.first?.bitPattern == 0x2A {
-            let saved = input.checkpoint
-            _ = input.next()
-            Whitespace.skip(&input)
-            if input.isEmpty {
-                return [wildcardTag]
-            }
-            input.seek(to: saved)
+        var input = [Byte](utf8: headerValue)[...]
+        let wildcard = Coder.Sequence(ArraySlice<Byte>.self, [Byte].self) {
+            RFC_9110.OWS.Coder()
+            "*"
+            RFC_9110.OWS.Coder()
+        }
+        if (try? wildcard.parse(&input)) != nil, input.isEmpty {
+            return [wildcardTag]
         }
 
-        let etags = (try? RFC_9110.Field.Value.List(RFC_9110.Entity.Tag.Coder()).parse(&input)) ?? []
+        input = [Byte](utf8: headerValue)[...]
+        let etags = (try? RFC_9110.Field.Value.List(RFC_9110.Entity.Tag.coder).parse(&input)) ?? []
         return etags.isEmpty ? nil : etags
     }
 }

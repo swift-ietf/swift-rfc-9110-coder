@@ -1,5 +1,6 @@
 import Byte
-import Byte_Parser
+import Byte_Standard_Library_Integration
+import Cursor_Standard_Library_Integration
 import Coder
 import Parser
 import RFC_9110
@@ -14,17 +15,17 @@ struct `HTTP.Token.Coder Tests` {
     func `A token round-trips through bytes`() throws {
         let token = try HTTP.Token("chunked")
         var bytes: [Byte] = []
-        try HTTP.Token.Coder().serialize(token, into: &bytes)
-        var input = Byte.Input(bytes)
+        try HTTP.Token.coder.serialize(token, into: &bytes)
+        var input = bytes[...]
 
-        #expect(try HTTP.Token.Coder().parse(&input) == token)
+        #expect(try HTTP.Token.coder.parse(&input) == token)
         #expect(input.isEmpty)
     }
 
     @Test
     func `A token stops at the first delimiter`() throws {
-        var input = Byte.Input(utf8: "text/html")
-        let token = try HTTP.Token.Coder().parse(&input)
+        var input = [Byte](utf8: "text/html")[...]
+        let token = try HTTP.Token.coder.parse(&input)
 
         #expect(token.rawValue == "text")
         #expect(input.first?.bitPattern == 0x2F)
@@ -32,10 +33,10 @@ struct `HTTP.Token.Coder Tests` {
 
     @Test
     func `An empty token is refused`() {
-        var input = Byte.Input(utf8: " x")
+        var input = [Byte](utf8: " x")[...]
 
         #expect(throws: HTTP.Token.Error.empty) {
-            try HTTP.Token.Coder().parse(&input)
+            try HTTP.Token.coder.parse(&input)
         }
     }
 
@@ -50,20 +51,20 @@ struct `HTTP.Token.Coder Tests` {
     func `A quoted string round-trips with escapes`() throws {
         let text = "say \"hi\" \\ there"
         var bytes: [Byte] = []
-        try HTTP.QuotedString.Coder().serialize(text, into: &bytes)
+        try HTTP.QuotedString.coder.serialize(text, into: &bytes)
         #expect(bytes == "\"say \\\"hi\\\" \\\\ there\"".utf8.map(Byte.init(bitPattern:)))
 
-        var input = Byte.Input(bytes)
-        #expect(try HTTP.QuotedString.Coder().parse(&input) == text)
+        var input = bytes[...]
+        #expect(try HTTP.QuotedString.coder.parse(&input) == text)
         #expect(input.isEmpty)
     }
 
     @Test
     func `A quoted string must close`() {
-        var input = Byte.Input(utf8: "\"open")
+        var input = [Byte](utf8: "\"open")[...]
 
-        #expect(throws: HTTP.QuotedString.Coder.Error.unexpectedEndOfInput) {
-            try HTTP.QuotedString.Coder().parse(&input)
+        #expect(throws: HTTP.QuotedString.Error.unexpectedEndOfInput) {
+            try HTTP.QuotedString.coder.parse(&input)
         }
     }
 
@@ -71,16 +72,16 @@ struct `HTTP.Token.Coder Tests` {
     func `A parameter serializes as a token when it can and quotes otherwise`() throws {
         let plain = HTTP.Parameter(name: try HTTP.Token("charset"), value: "utf-8")
         var bytes: [Byte] = []
-        try HTTP.Parameter.Coder().serialize(plain, into: &bytes)
+        try HTTP.Parameter.coder.serialize(plain, into: &bytes)
         #expect(bytes == "charset=utf-8".utf8.map(Byte.init(bitPattern:)))
 
         let spaced = HTTP.Parameter(name: try HTTP.Token("realm"), value: "API Access")
         bytes = []
-        try HTTP.Parameter.Coder().serialize(spaced, into: &bytes)
+        try HTTP.Parameter.coder.serialize(spaced, into: &bytes)
         #expect(bytes == "realm=\"API Access\"".utf8.map(Byte.init(bitPattern:)))
 
-        var input = Byte.Input(bytes)
-        #expect(try HTTP.Parameter.Coder().parse(&input) == spaced)
+        var input = bytes[...]
+        #expect(try HTTP.Parameter.coder.parse(&input) == spaced)
     }
 
     @Test
@@ -103,7 +104,7 @@ struct `HTTP.Token.Coder Tests` {
 
     @Test
     func `A field value list serializes with comma and space`() throws {
-        let list = HTTP.Field.Value.List(HTTP.Token.Coder())
+        let list = HTTP.Field.Value.List(HTTP.Token.coder)
         var bytes: [Byte] = []
         try list.serialize([try HTTP.Token("gzip"), try HTTP.Token("br")], into: &bytes)
 

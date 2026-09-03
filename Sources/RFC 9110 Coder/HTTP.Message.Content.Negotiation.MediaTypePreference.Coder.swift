@@ -1,28 +1,26 @@
 public import Byte
-public import Byte_Parser
+import Byte_Standard_Library_Integration
+public import Cursor_Standard_Library_Integration
 public import Coder
+public import Cursor
 public import RFC_9110
 import Parser
 import Serializer
 
 extension RFC_9110.Message.Content.Negotiation.MediaTypePreference {
 
-    public struct Coder: Coding {
-
-        public typealias Input = Byte.Input
+    public struct Coder<Input: Cursor.`Protocol`<Byte, Never>, Buffer: RangeReplaceableCollection<Byte>>: Coding {
 
         public typealias Output = RFC_9110.Message.Content.Negotiation.MediaTypePreference
 
-        public typealias Buffer = [Byte]
-
-        public typealias Failure = RFC_9110.Message.Content.Negotiation.MediaTypePreference.Coder.Error
+        public typealias Failure = RFC_9110.Message.Content.Negotiation.MediaTypePreference.Error
 
         public init() {}
 
-        public borrowing func parse(_ input: inout Byte.Input) throws(Failure) -> Output {
+        public borrowing func parse(_ input: inout Input) throws(Failure) -> Output {
             var mediaType: RFC_9110.MediaType
-            do throws(RFC_9110.MediaType.Coder.Error) {
-                mediaType = try RFC_9110.MediaType.Coder().parse(&input)
+            do throws(RFC_9110.MediaType.Error) {
+                mediaType = try RFC_9110.MediaType.Coder<Input, Buffer>().parse(&input)
             } catch {
                 throw .mediaType(error)
             }
@@ -38,17 +36,17 @@ extension RFC_9110.Message.Content.Negotiation.MediaTypePreference {
             return Output(mediaType: mediaType, quality: quality)
         }
 
-        public borrowing func serialize(_ output: Output, into buffer: inout [Byte]) throws(Failure) {
-            do throws(RFC_9110.MediaType.Coder.Error) {
-                try RFC_9110.MediaType.Coder().serialize(output.mediaType, into: &buffer)
+        public borrowing func serialize(_ output: Output, into buffer: inout Buffer) throws(Failure) {
+            do throws(RFC_9110.MediaType.Error) {
+                try RFC_9110.MediaType.Coder<Input, Buffer>().serialize(output.mediaType, into: &buffer)
             } catch {
                 throw .mediaType(error)
             }
 
             guard output.quality != .default else { return }
             buffer.append(contentsOf: ";q=".utf8.lazy.map(Byte.init(bitPattern:)))
-            do throws(RFC_9110.Message.Content.Negotiation.QualityValue.Coder.Error) {
-                try RFC_9110.Message.Content.Negotiation.QualityValue.Coder()
+            do throws(RFC_9110.Message.Content.Negotiation.QualityValue.Error) {
+                try RFC_9110.Message.Content.Negotiation.QualityValue.Coder<Input, Buffer>()
                     .serialize(output.quality, into: &buffer)
             } catch {
                 throw .weight(error)
@@ -56,24 +54,21 @@ extension RFC_9110.Message.Content.Negotiation.MediaTypePreference {
         }
     }
 
-    public static var coder: Coder { .init() }
+    public static var coder: Coder<ArraySlice<Byte>, [Byte]> { .init() }
+
+    public enum Error: Swift.Error, Equatable {
+        case mediaType(RFC_9110.MediaType.Error)
+        case weight(RFC_9110.Message.Content.Negotiation.QualityValue.Error)
+    }
 }
 
 extension RFC_9110.Message.Content.Negotiation.MediaTypePreference: Coder.Codable {}
 
-extension RFC_9110.Message.Content.Negotiation.MediaTypePreference.Coder {
-
-    public enum Error: Swift.Error, Equatable {
-        case mediaType(RFC_9110.MediaType.Coder.Error)
-        case weight(RFC_9110.Message.Content.Negotiation.QualityValue.Coder.Error)
-    }
-}
-
 extension RFC_9110.Message.Content.Negotiation.MediaTypePreference {
 
     public static func parse(_ headerValue: String) -> [Self] {
-        var input = Byte.Input(utf8: headerValue)
-        let preferences = (try? RFC_9110.Field.Value.List(Coder()).parse(&input)) ?? []
+        var input = [Byte](utf8: headerValue)[...]
+        let preferences = (try? RFC_9110.Field.Value.List(coder).parse(&input)) ?? []
 
         return preferences.sorted { lhs, rhs in
             if lhs.quality != rhs.quality {

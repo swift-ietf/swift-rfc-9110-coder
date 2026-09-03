@@ -1,76 +1,55 @@
 public import Byte
-public import Byte_Parser
+import Byte_Standard_Library_Integration
+public import Cursor_Standard_Library_Integration
 public import Coder
+public import Cursor
 public import RFC_9110
+import Cursor_Coder
+import Either
+import Cursor_Parser_Optionally
+import Iterator_Coder
 import Parser
+import Parser_Error
 import Serializer
 
 extension RFC_9110.Entity.Tag {
 
-    public struct Coder: Coding {
+    public struct Coder<Input: Cursor.`Protocol`<Byte, Never>, Buffer: RangeReplaceableCollection<Byte>>: Coding {
 
-        public typealias Input = Byte.Input
-
-        public typealias Output = RFC_9110.Entity.Tag
-
-        public typealias Buffer = [Byte]
-
-        public typealias Failure = RFC_9110.Entity.Tag.Coder.Error
+        public typealias Failure = RFC_9110.Entity.Tag.Error
 
         public init() {}
 
-        public borrowing func parse(_ input: inout Byte.Input) throws(Failure) -> RFC_9110.Entity.Tag {
-            Whitespace.skip(&input)
-
-            var isWeak = false
-            let beforeWeak = input.checkpoint
-            if let w = input.next(), w.bitPattern == 0x57,
-                let slash = input.next(), slash.bitPattern == 0x2F
-            {
-                isWeak = true
-            } else {
-                input.seek(to: beforeWeak)
+        @Coder::Coder.Builder<Input, Buffer>
+        public var body: some Coding<Input, RFC_9110.Entity.Tag, Buffer, Failure> {
+            Coder::Coder.Sequence(Input.self, Buffer.self) {
+                RFC_9110.OWS.Coder()
+                Parser.Optionally([Byte].Coder("W/"))
+                RFC_9110.QuotedString.Coder()
             }
-
-            do throws(RFC_9110.QuotedString.Coder.Error) {
-                let value = try RFC_9110.QuotedString.Coder().parse(&input)
-                return RFC_9110.Entity.Tag(value: value, isWeak: isWeak)
-            } catch {
-                throw .expectedOpaqueTag(error)
-            }
-        }
-
-        public borrowing func serialize(_ output: RFC_9110.Entity.Tag, into buffer: inout [Byte]) throws(Failure) {
-            if output.isWeak {
-                buffer.append(Byte(bitPattern: 0x57))
-                buffer.append(Byte(bitPattern: 0x2F))
-            }
-            do throws(RFC_9110.QuotedString.Coder.Error) {
-                try RFC_9110.QuotedString.Coder().serialize(output.value, into: &buffer)
-            } catch {
-                throw .expectedOpaqueTag(error)
-            }
+            .map(
+                to: { output in RFC_9110.Entity.Tag(value: output.1, isWeak: output.0 != nil) },
+                from: { ($0.isWeak ? Optional(()) : nil, $0.value) }
+            )
+            .error.map { (failure) -> Failure in .expectedOpaqueTag(failure.value) }
         }
     }
 
-    public static var coder: Coder { .init() }
+    public static var coder: Coder<ArraySlice<Byte>, [Byte]> { .init() }
+
+    public enum Error: Swift.Error, Equatable {
+        case expectedOpaqueTag(RFC_9110.QuotedString.Error)
+    }
 }
 
 extension RFC_9110.Entity.Tag: Coder.Codable {}
 
-extension RFC_9110.Entity.Tag.Coder {
-
-    public enum Error: Swift.Error, Equatable {
-        case expectedOpaqueTag(RFC_9110.QuotedString.Coder.Error)
-    }
-}
-
 extension RFC_9110.Entity.Tag {
 
     public static func parse(_ headerValue: String) -> Self? {
-        var input = Byte.Input(utf8: headerValue)
-        do throws(Coder.Error) {
-            return try Coder().parse(&input)
+        var input = [Byte](utf8: headerValue)[...]
+        do throws(Error) {
+            return try coder.parse(&input)
         } catch {
             return nil
         }

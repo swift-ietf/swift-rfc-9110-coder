@@ -1,25 +1,23 @@
 public import Byte
-public import Byte_Parser
+import Byte_Standard_Library_Integration
+public import Cursor_Standard_Library_Integration
 public import Coder
+public import Cursor
 public import RFC_9110
 import Parser
 import Serializer
 
 extension RFC_9110.Message.Content.Negotiation.QualityValue {
 
-    public struct Coder: Coding {
-
-        public typealias Input = Byte.Input
+    public struct Coder<Input: Cursor.`Protocol`<Byte, Never>, Buffer: RangeReplaceableCollection<Byte>>: Coding {
 
         public typealias Output = RFC_9110.Message.Content.Negotiation.QualityValue
 
-        public typealias Buffer = [Byte]
-
-        public typealias Failure = RFC_9110.Message.Content.Negotiation.QualityValue.Coder.Error
+        public typealias Failure = RFC_9110.Message.Content.Negotiation.QualityValue.Error
 
         public init() {}
 
-        public borrowing func parse(_ input: inout Byte.Input) throws(Failure) -> Output {
+        public borrowing func parse(_ input: inout Input) throws(Failure) -> Output {
             let start = input.checkpoint
 
             guard let leading = input.next() else {
@@ -40,13 +38,12 @@ extension RFC_9110.Message.Content.Negotiation.QualityValue {
 
             var fraction = 0
             var digits = 0
-            while digits < 3, let digit = input.first, (0x30...0x39).contains(digit.bitPattern) {
-                _ = input.next()
-                fraction = fraction * 10 + Int(digit.bitPattern - 0x30)
+            while digits < 3, let digit = Self.digit(&input) {
+                fraction = fraction * 10 + digit
                 digits += 1
             }
 
-            if let extra = input.first, (0x30...0x39).contains(extra.bitPattern) {
+            if Self.digit(&input) != nil {
                 input.seek(to: start)
                 throw .invalidQValue
             }
@@ -71,29 +68,35 @@ extension RFC_9110.Message.Content.Negotiation.QualityValue {
             return quality
         }
 
-        public borrowing func serialize(_ output: Output, into buffer: inout [Byte]) throws(Failure) {
+        public borrowing func serialize(_ output: Output, into buffer: inout Buffer) throws(Failure) {
             buffer.append(contentsOf: output.description.utf8.lazy.map(Byte.init(bitPattern:)))
+        }
+
+        private static func digit(_ input: inout Input) -> Int? {
+            let mark = input.checkpoint
+            guard let byte = input.next(), (0x30...0x39).contains(byte.bitPattern) else {
+                input.seek(to: mark)
+                return nil
+            }
+            return Int(byte.bitPattern - 0x30)
         }
     }
 
-    public static var coder: Coder { .init() }
-}
-
-extension RFC_9110.Message.Content.Negotiation.QualityValue: Coder.Codable {}
-
-extension RFC_9110.Message.Content.Negotiation.QualityValue.Coder {
+    public static var coder: Coder<ArraySlice<Byte>, [Byte]> { .init() }
 
     public enum Error: Swift.Error, Equatable {
         case invalidQValue
     }
 }
 
+extension RFC_9110.Message.Content.Negotiation.QualityValue: Coder.Codable {}
+
 extension RFC_9110.Message.Content.Negotiation.QualityValue {
 
     public static func parse(_ string: String) -> Self? {
-        var input = Byte.Input(utf8: string)
-        do throws(Coder.Error) {
-            let quality = try Coder().parse(&input)
+        var input = [Byte](utf8: string)[...]
+        do throws(Error) {
+            let quality = try coder.parse(&input)
             guard input.isEmpty else { return nil }
             return quality
         } catch {

@@ -1,5 +1,6 @@
 import Byte
-import Byte_Parser
+import Byte_Standard_Library_Integration
+import Cursor_Standard_Library_Integration
 import Coder
 import Parser
 import RFC_9110
@@ -17,7 +18,7 @@ struct `HTTP.Coder Round Trip Tests` {
         try mediaType.encode(into: &bytes)
         #expect(bytes == "text/html; charset=utf-8".utf8.map(Byte.init(bitPattern:)))
 
-        var input = Byte.Input(bytes)
+        var input = bytes[...]
         let decoded = try HTTP.MediaType(decoding: &input)
         #expect(decoded == mediaType)
         #expect(decoded.parameters == mediaType.parameters)
@@ -31,7 +32,7 @@ struct `HTTP.Coder Round Trip Tests` {
             try tag.encode(into: &bytes)
             #expect(bytes == tag.headerValue.utf8.map(Byte.init(bitPattern:)))
 
-            var input = Byte.Input(bytes)
+            var input = bytes[...]
             #expect(try HTTP.Entity.Tag(decoding: &input) == tag)
         }
     }
@@ -43,7 +44,7 @@ struct `HTTP.Coder Round Trip Tests` {
             var bytes: [Byte] = []
             try quality.encode(into: &bytes)
 
-            var input = Byte.Input(bytes)
+            var input = bytes[...]
             #expect(try HTTP.Message.Content.Negotiation.QualityValue(decoding: &input) == quality)
             #expect(input.isEmpty)
         }
@@ -64,14 +65,14 @@ struct `HTTP.Coder Round Trip Tests` {
         try weighted.encode(into: &bytes)
         #expect(bytes == "application/json;q=0.9".utf8.map(Byte.init(bitPattern:)))
 
-        var input = Byte.Input(bytes)
+        var input = bytes[...]
         let decoded = try HTTP.Message.Content.Negotiation.MediaTypePreference(decoding: &input)
         #expect(decoded == weighted)
     }
 
     @Test
     func `A charset preference is a weighted token`() throws {
-        var input = Byte.Input(utf8: "utf-8;q=0.5")
+        var input = [Byte](utf8: "utf-8;q=0.5")[...]
         let preference = try HTTP.Message.Content.Negotiation.CharsetPreference(decoding: &input)
         #expect(preference.charset == "utf-8")
         #expect(preference.quality.thousandths == 500)
@@ -91,7 +92,7 @@ struct `HTTP.Coder Round Trip Tests` {
         try challenge.encode(into: &bytes)
         #expect(bytes == "Bearer realm=example, scope=\"read write\"".utf8.map(Byte.init(bitPattern:)))
 
-        var input = Byte.Input(bytes)
+        var input = bytes[...]
         #expect(try HTTP.Authentication.Challenge(decoding: &input) == challenge)
     }
 
@@ -102,7 +103,7 @@ struct `HTTP.Coder Round Trip Tests` {
         try credentials.encode(into: &bytes)
         #expect(bytes == "Bearer token123".utf8.map(Byte.init(bitPattern:)))
 
-        var input = Byte.Input(bytes)
+        var input = bytes[...]
         #expect(try HTTP.Authentication.Credentials(decoding: &input) == credentials)
     }
 

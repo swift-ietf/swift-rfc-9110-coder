@@ -1,98 +1,76 @@
 public import Byte
-public import Byte_Parser
+import Byte_Standard_Library_Integration
+public import Cursor_Standard_Library_Integration
 public import Coder
+public import Cursor
 public import RFC_9110
+import Cursor_Coder
+import Either
+import Cursor_Parser_Many
+import Iterator_Coder
 import Parser
+import Parser_Error
 import Serializer
 
 extension RFC_9110.MediaType {
 
-    public struct Coder: Coding {
+    public struct Coder<Input: Cursor.`Protocol`<Byte, Never>, Buffer: RangeReplaceableCollection<Byte>>: Coding {
 
-        public typealias Input = Byte.Input
-
-        public typealias Output = RFC_9110.MediaType
-
-        public typealias Buffer = [Byte]
-
-        public typealias Failure = RFC_9110.MediaType.Coder.Error
+        public typealias Failure = RFC_9110.MediaType.Error
 
         public init() {}
 
-        public borrowing func parse(_ input: inout Byte.Input) throws(Failure) -> RFC_9110.MediaType {
-            Whitespace.skip(&input)
-
-            let type: RFC_9110.Token
-            do throws(RFC_9110.Token.Error) {
-                type = try RFC_9110.Token.Coder().parse(&input)
-            } catch {
-                throw .expectedType
+        @Coder::Coder.Builder<Input, Buffer>
+        public var body: some Coding<Input, RFC_9110.MediaType, Buffer, Failure> {
+            Coder::Coder.Sequence(Input.self, Buffer.self) {
+                RFC_9110.OWS.Coder()
+                RFC_9110.Token.Coder()
+                "/"
+                RFC_9110.Token.Coder()
+                Parser.Many(RFC_9110.Parameter.Prefixed())
             }
-
-            let afterType = input.checkpoint
-            guard let slash = input.next(), slash.bitPattern == 0x2F else {
-                input.seek(to: afterType)
-                throw .expectedSlash
-            }
-
-            let subtype: RFC_9110.Token
-            do throws(RFC_9110.Token.Error) {
-                subtype = try RFC_9110.Token.Coder().parse(&input)
-            } catch {
-                throw .expectedSubtype
-            }
-
-            var parameters: [String: String] = [:]
-            for parameter in Parameters.parse(&input) {
-                parameters[parameter.name.rawValue.lowercased()] = parameter.value
-            }
-
-            return RFC_9110.MediaType(type.rawValue, subtype.rawValue, parameters: parameters)
-        }
-
-        public borrowing func serialize(_ output: RFC_9110.MediaType, into buffer: inout [Byte]) throws(Failure) {
-            buffer.append(contentsOf: output.type.utf8.lazy.map(Byte.init(bitPattern:)))
-            buffer.append(Byte(bitPattern: 0x2F))
-            buffer.append(contentsOf: output.subtype.utf8.lazy.map(Byte.init(bitPattern:)))
-
-            var parameters: [RFC_9110.Parameter] = []
-            for (name, value) in output.parameters.sorted(by: { $0.key < $1.key }) {
-                do throws(RFC_9110.Token.Error) {
-                    parameters.append(RFC_9110.Parameter(name: try RFC_9110.Token(name), value: value))
-                } catch {
-                    throw .invalidParameter(.expectedName(error))
+            .map(
+                to: { output in
+                    RFC_9110.MediaType(output.0.rawValue, output.1.rawValue, parameters: output.2.dictionary)
+                },
+                from: {
+                    (
+                        RFC_9110.Token(unchecked: $0.type),
+                        RFC_9110.Token(unchecked: $0.subtype),
+                        [RFC_9110.Parameter].sorted($0.parameters)
+                    )
                 }
-            }
-
-            do throws(RFC_9110.Parameter.Coder.Error) {
-                try Parameters.serialize(parameters, into: &buffer)
-            } catch {
-                throw .invalidParameter(error)
+            )
+            .error.map { (failure) -> Failure in
+                switch failure {
+                case .left(.left(.left(let error))): .expectedType(error.value)
+                case .left(.left(.right)): .expectedSlash
+                case .left(.right(let error)): .expectedSubtype(error)
+                case .right(.element(let error)): .invalidParameter(error)
+                case .right: .invalidParameter(.expectedName(.empty))
+                }
             }
         }
     }
 
-    public static var coder: Coder { .init() }
+    public static var coder: Coder<ArraySlice<Byte>, [Byte]> { .init() }
+
+    public enum Error: Swift.Error, Equatable {
+        case expectedType(RFC_9110.Token.Error)
+        case expectedSlash
+        case expectedSubtype(RFC_9110.Token.Error)
+        case invalidParameter(RFC_9110.Parameter.Error)
+    }
 }
 
 extension RFC_9110.MediaType: Coder.Codable {}
 
-extension RFC_9110.MediaType.Coder {
-
-    public enum Error: Swift.Error, Equatable {
-        case expectedType
-        case expectedSlash
-        case expectedSubtype
-        case invalidParameter(RFC_9110.Parameter.Coder.Error)
-    }
-}
-
 extension RFC_9110.MediaType {
 
     public static func parse(_ string: String) -> Self? {
-        var input = Byte.Input(utf8: string)
-        do throws(Coder.Error) {
-            return try Coder().parse(&input)
+        var input = [Byte](utf8: string)[...]
+        do throws(Error) {
+            return try coder.parse(&input)
         } catch {
             return nil
         }

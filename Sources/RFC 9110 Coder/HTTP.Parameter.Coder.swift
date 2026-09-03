@@ -1,121 +1,100 @@
 public import Byte
-public import Byte_Parser
+import Byte_Standard_Library_Integration
+public import Cursor_Standard_Library_Integration
 public import Coder
+public import Cursor
 public import RFC_9110
+import Cursor_Coder
+import Either
+import Cursor_Parser_OneOf
+import Iterator_Coder
 import Parser
+import Parser_Error
+import Product
 import Serializer
 
 extension RFC_9110.Parameter {
 
-    public struct Coder: Coding {
+    public struct Coder<Input: Cursor.`Protocol`<Byte, Never>, Buffer: RangeReplaceableCollection<Byte>>: Coding {
 
-        public typealias Input = Byte.Input
-
-        public typealias Output = RFC_9110.Parameter
-
-        public typealias Buffer = [Byte]
-
-        public typealias Failure = RFC_9110.Parameter.Coder.Error
+        public typealias Failure = RFC_9110.Parameter.Error
 
         public init() {}
 
-        public borrowing func parse(_ input: inout Byte.Input) throws(Failure) -> RFC_9110.Parameter {
-            let name: RFC_9110.Token
-            do throws(RFC_9110.Token.Error) {
-                name = try RFC_9110.Token.Coder().parse(&input)
-            } catch {
-                throw .expectedName(error)
+        @Coder::Coder.Builder<Input, Buffer>
+        public var body: some Coding<Input, RFC_9110.Parameter, Buffer, Failure> {
+            Coder::Coder.Sequence(Input.self, Buffer.self) {
+                RFC_9110.Token.Coder()
+                "="
+                Parser.OneOf.Two(
+                    RFC_9110.Token.Coder().map(to: \.rawValue, from: { RFC_9110.Token(unchecked: $0) }),
+                    RFC_9110.QuotedString.Coder()
+                )
             }
-
-            let afterName = input.checkpoint
-            guard let equals = input.next(), equals.bitPattern == 0x3D else {
-                input.seek(to: afterName)
-                throw .expectedEquals
-            }
-
-            if input.first?.bitPattern == 0x22 {
-                do throws(RFC_9110.QuotedString.Coder.Error) {
-                    let value = try RFC_9110.QuotedString.Coder().parse(&input)
-                    return RFC_9110.Parameter(name: name, value: value)
-                } catch {
-                    throw .invalidQuotedString(error)
+            .map(
+                to: { output in RFC_9110.Parameter(name: output.0, value: output.1) },
+                from: { ($0.name, $0.value) }
+            )
+            .error.map { (failure) -> Failure in
+                switch failure {
+                case .left(.left(let error)): .expectedName(error)
+                case .left(.right): .expectedEquals
+                case .right(let alternatives): .invalidValue(alternatives.values.1)
                 }
-            }
-
-            do throws(RFC_9110.Token.Error) {
-                let value = try RFC_9110.Token.Coder().parse(&input)
-                return RFC_9110.Parameter(name: name, value: value.rawValue)
-            } catch {
-                throw .expectedValue
-            }
-        }
-
-        public borrowing func serialize(_ output: RFC_9110.Parameter, into buffer: inout [Byte]) throws(Failure) {
-            buffer.append(contentsOf: output.name.rawValue.utf8.lazy.map(Byte.init(bitPattern:)))
-            buffer.append(Byte(bitPattern: 0x3D))
-
-            if !output.value.isEmpty, output.value.utf8.allSatisfy(RFC_9110.Token.isTchar) {
-                buffer.append(contentsOf: output.value.utf8.lazy.map(Byte.init(bitPattern:)))
-                return
-            }
-
-            do throws(RFC_9110.QuotedString.Coder.Error) {
-                try RFC_9110.QuotedString.Coder().serialize(output.value, into: &buffer)
-            } catch {
-                throw .invalidQuotedString(error)
             }
         }
     }
 
-    public static var coder: Coder { .init() }
-}
-
-extension RFC_9110.Parameter: Coder.Codable {}
-
-extension RFC_9110.Parameter.Coder {
+    public static var coder: Coder<ArraySlice<Byte>, [Byte]> { .init() }
 
     public enum Error: Swift.Error, Equatable {
         case expectedName(RFC_9110.Token.Error)
         case expectedEquals
-        case expectedValue
-        case invalidQuotedString(RFC_9110.QuotedString.Coder.Error)
+        case invalidValue(RFC_9110.QuotedString.Error)
     }
 }
 
-enum Parameters {
+extension RFC_9110.Parameter: Coder.Codable {}
 
-    static func parse(_ input: inout Byte.Input) -> [RFC_9110.Parameter] {
-        var parameters: [RFC_9110.Parameter] = []
+extension RFC_9110.Parameter {
 
-        while true {
-            let saved = input.checkpoint
+    public struct Prefixed<Input: Cursor.`Protocol`<Byte, Never>, Buffer: RangeReplaceableCollection<Byte>>: Coding {
 
-            Whitespace.skip(&input)
-            guard let semicolon = input.next(), semicolon.bitPattern == 0x3B else {
-                input.seek(to: saved)
-                break
+        public typealias Failure = RFC_9110.Parameter.Error
+
+        public init() {}
+
+        @Coder::Coder.Builder<Input, Buffer>
+        public var body: some Coding<Input, RFC_9110.Parameter, Buffer, Failure> {
+            Coder::Coder.Sequence(Input.self, Buffer.self) {
+                RFC_9110.OWS.Coder()
+                ";"
+                RFC_9110.OWS.Coder(canonical: " ")
+                RFC_9110.Parameter.Coder()
             }
-            Whitespace.skip(&input)
-
-            do throws(RFC_9110.Parameter.Coder.Error) {
-                parameters.append(try RFC_9110.Parameter.Coder().parse(&input))
-            } catch {
-                input.seek(to: saved)
-                break
+            .error.map { (failure) -> Failure in
+                switch failure {
+                case .right(let error): error
+                default: .expectedName(.empty)
+                }
             }
         }
+    }
+}
 
-        return parameters
+extension [RFC_9110.Parameter] {
+
+    static func sorted(_ parameters: [String: String]) -> Self {
+        parameters.sorted { $0.key < $1.key }.map {
+            RFC_9110.Parameter(name: RFC_9110.Token(unchecked: $0.key), value: $0.value)
+        }
     }
 
-    static func serialize(
-        _ parameters: [RFC_9110.Parameter],
-        into buffer: inout [Byte]
-    ) throws(RFC_9110.Parameter.Coder.Error) {
-        for parameter in parameters {
-            buffer.append(Byte(bitPattern: 0x3B))
-            buffer.append(Byte(bitPattern: 0x20))
-            try RFC_9110.Parameter.Coder().serialize(parameter, into: &buffer)
+    var dictionary: [String: String] {
+        var result: [String: String] = [:]
+        for parameter in self {
+            result[parameter.name.rawValue] = parameter.value
         }
+        return result
     }
 }

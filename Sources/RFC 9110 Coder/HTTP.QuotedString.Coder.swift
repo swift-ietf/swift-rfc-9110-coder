@@ -1,6 +1,8 @@
 public import Byte
-public import Byte_Parser
+import Byte_Standard_Library_Integration
+public import Cursor_Standard_Library_Integration
 public import Coder
+public import Cursor
 public import RFC_9110
 import Parser
 import Serializer
@@ -12,19 +14,15 @@ extension RFC_9110 {
 
 extension RFC_9110.QuotedString {
 
-    public struct Coder: Coding {
-
-        public typealias Input = Byte.Input
+    public struct Coder<Input: Cursor.`Protocol`<Byte, Never>, Buffer: RangeReplaceableCollection<Byte>>: Coding {
 
         public typealias Output = String
 
-        public typealias Buffer = [Byte]
-
-        public typealias Failure = RFC_9110.QuotedString.Coder.Error
+        public typealias Failure = RFC_9110.QuotedString.Error
 
         public init() {}
 
-        public borrowing func parse(_ input: inout Byte.Input) throws(Failure) -> String {
+        public borrowing func parse(_ input: inout Input) throws(Failure) -> String {
             let start = input.checkpoint
             guard let open = input.next(), open.bitPattern == 0x22 else {
                 input.seek(to: start)
@@ -55,7 +53,7 @@ extension RFC_9110.QuotedString {
             throw .unexpectedEndOfInput
         }
 
-        public borrowing func serialize(_ output: String, into buffer: inout [Byte]) throws(Failure) {
+        public borrowing func serialize(_ output: String, into buffer: inout Buffer) throws(Failure) {
             buffer.append(Byte(bitPattern: 0x22))
             for byte in output.utf8 {
                 switch byte {
@@ -77,9 +75,8 @@ extension RFC_9110.QuotedString {
             byte == 0x09 || (0x20...0x7E).contains(byte) || byte >= 0x80
         }
     }
-}
 
-extension RFC_9110.QuotedString.Coder {
+    public static var coder: Coder<ArraySlice<Byte>, [Byte]> { .init() }
 
     public enum Error: Swift.Error, Equatable {
         case expectedOpenQuote
