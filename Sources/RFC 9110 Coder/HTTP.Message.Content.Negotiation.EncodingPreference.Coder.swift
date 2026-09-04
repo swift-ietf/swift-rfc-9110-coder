@@ -9,7 +9,10 @@ import Serializer
 
 extension RFC_9110.Message.Content.Negotiation.EncodingPreference {
 
-    public struct Coder<Input: Cursor.`Protocol`<Byte, Never>, Buffer: RangeReplaceableCollection<Byte>>: Coding {
+    public struct Coder<
+        Input: Cursor.`Protocol`<Byte, Never>,
+        Buffer: RangeReplaceableCollection<Byte>
+    >: Coding {
 
         public typealias Failure = RFC_9110.Message.Content.Negotiation.Weighted<RFC_9110.Token.Coder<Input, Buffer>>.Error
 
