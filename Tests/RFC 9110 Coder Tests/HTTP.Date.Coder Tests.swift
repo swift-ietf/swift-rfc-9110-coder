@@ -1,4 +1,3 @@
-import Foundation
 import RFC_5322
 import Testing
 
@@ -105,19 +104,6 @@ struct `HTTP.Date.Coder Tests` {
 
         #expect(earlier < later)
         #expect(later > earlier)
-    }
-
-    @Test
-    func `Codable`() async throws {
-        let encoder = JSONEncoder()
-        let decoder = JSONDecoder()
-
-        let httpDate = HTTP.Date(secondsSinceEpoch: 784_111_777)
-        let encoded = try encoder.encode(httpDate)
-        let decoded = try decoder.decode(HTTP.Date.self, from: encoded)
-
-        let diff = abs(decoded.secondsSinceEpoch - httpDate.secondsSinceEpoch)
-        #expect(diff < 1)
     }
 
     @Test

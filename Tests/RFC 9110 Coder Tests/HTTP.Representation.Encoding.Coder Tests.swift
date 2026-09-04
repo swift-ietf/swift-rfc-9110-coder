@@ -4,11 +4,11 @@ import RFC_9110_Coder
 import Testing
 
 @Suite
-struct `HTTP.Message.Content.Encoding.Coder Tests` {
+struct `HTTP.Representation.Encoding.Coder Tests` {
 
     @Test
     func `Parse single encoding`() async throws {
-        let encodings = HTTP.Message.Content.Encoding.parse("gzip")
+        let encodings = HTTP.Representation.Encoding.parse("gzip")
 
         #expect(encodings.count == 1)
         #expect(encodings[0] == .gzip)
@@ -16,7 +16,7 @@ struct `HTTP.Message.Content.Encoding.Coder Tests` {
 
     @Test
     func `Parse multiple encodings`() async throws {
-        let encodings = HTTP.Message.Content.Encoding.parse("gzip, deflate")
+        let encodings = HTTP.Representation.Encoding.parse("gzip, deflate")
 
         #expect(encodings.count == 2)
         #expect(encodings[0] == .gzip)
@@ -25,7 +25,7 @@ struct `HTTP.Message.Content.Encoding.Coder Tests` {
 
     @Test
     func `Parse with whitespace`() async throws {
-        let encodings = HTTP.Message.Content.Encoding.parse(" gzip ,  br  ")
+        let encodings = HTTP.Representation.Encoding.parse(" gzip ,  br  ")
 
         #expect(encodings.count == 2)
         #expect(encodings[0] == .gzip)
@@ -34,7 +34,7 @@ struct `HTTP.Message.Content.Encoding.Coder Tests` {
 
     @Test
     func `Parse empty string`() async throws {
-        let encodings = HTTP.Message.Content.Encoding.parse("")
+        let encodings = HTTP.Representation.Encoding.parse("")
 
         #expect(encodings.isEmpty)
     }

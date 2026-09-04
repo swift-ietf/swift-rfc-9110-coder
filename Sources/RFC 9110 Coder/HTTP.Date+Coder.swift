@@ -1,5 +1,9 @@
 public import RFC_5322
 public import RFC_9110
+import Byte
+import Byte_Standard_Library_Integration
+import Coder
+import RFC_5322_Coder
 
 extension RFC_5322.DateTime {
 
@@ -136,4 +140,13 @@ private func gmtDateTime(
 
 private func isHTTPDateSpace(_ character: Character) -> Bool {
     character == " " || character == "\t"
+}
+
+extension RFC_5322.DateTime {
+
+    var text: String {
+        var buffer: [Byte] = []
+        try? RFC_5322.DateTime.coder.serialize(self, into: &buffer)
+        return String(decoding: buffer, as: UTF8.self)
+    }
 }

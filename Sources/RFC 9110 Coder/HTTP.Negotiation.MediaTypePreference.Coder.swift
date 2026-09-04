@@ -7,13 +7,13 @@ public import RFC_9110
 import Parser
 import Serializer
 
-extension RFC_9110.Message.Content.Negotiation.MediaTypePreference {
+extension RFC_9110.Negotiation.MediaTypePreference {
 
     public struct Coder<Input: Cursor.`Protocol`<Byte, Never>, Buffer: RangeReplaceableCollection<Byte>>: Coding {
 
-        public typealias Output = RFC_9110.Message.Content.Negotiation.MediaTypePreference
+        public typealias Output = RFC_9110.Negotiation.MediaTypePreference
 
-        public typealias Failure = RFC_9110.Message.Content.Negotiation.MediaTypePreference.Error
+        public typealias Failure = RFC_9110.Negotiation.MediaTypePreference.Error
 
         public init() {}
 
@@ -25,9 +25,9 @@ extension RFC_9110.Message.Content.Negotiation.MediaTypePreference {
                 throw .mediaType(error)
             }
 
-            var quality = RFC_9110.Message.Content.Negotiation.QualityValue.default
+            var quality = RFC_9110.Negotiation.QualityValue.default
             if let weight = mediaType.parameters.removeValue(forKey: "q") {
-                guard let parsed = RFC_9110.Message.Content.Negotiation.QualityValue.parse(weight) else {
+                guard let parsed = RFC_9110.Negotiation.QualityValue.parse(weight) else {
                     throw .weight(.invalidQValue)
                 }
                 quality = parsed
@@ -45,8 +45,8 @@ extension RFC_9110.Message.Content.Negotiation.MediaTypePreference {
 
             guard output.quality != .default else { return }
             buffer.append(contentsOf: ";q=".utf8.lazy.map(Byte.init(bitPattern:)))
-            do throws(RFC_9110.Message.Content.Negotiation.QualityValue.Error) {
-                try RFC_9110.Message.Content.Negotiation.QualityValue.Coder<Input, Buffer>()
+            do throws(RFC_9110.Negotiation.QualityValue.Error) {
+                try RFC_9110.Negotiation.QualityValue.Coder<Input, Buffer>()
                     .serialize(output.quality, into: &buffer)
             } catch {
                 throw .weight(error)
@@ -58,13 +58,13 @@ extension RFC_9110.Message.Content.Negotiation.MediaTypePreference {
 
     public enum Error: Swift.Error, Equatable {
         case mediaType(RFC_9110.MediaType.Error)
-        case weight(RFC_9110.Message.Content.Negotiation.QualityValue.Error)
+        case weight(RFC_9110.Negotiation.QualityValue.Error)
     }
 }
 
-extension RFC_9110.Message.Content.Negotiation.MediaTypePreference: Coder.Codable {}
+extension RFC_9110.Negotiation.MediaTypePreference: Coder.Codable {}
 
-extension RFC_9110.Message.Content.Negotiation.MediaTypePreference {
+extension RFC_9110.Negotiation.MediaTypePreference {
 
     public static func parse(_ headerValue: String) -> [Self] {
         var input = [Byte](utf8: headerValue)[...]

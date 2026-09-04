@@ -7,13 +7,13 @@ public import RFC_9110
 import Parser
 import Serializer
 
-extension RFC_9110.Message.Content.Negotiation.QualityValue {
+extension RFC_9110.Negotiation.QualityValue {
 
     public struct Coder<Input: Cursor.`Protocol`<Byte, Never>, Buffer: RangeReplaceableCollection<Byte>>: Coding {
 
-        public typealias Output = RFC_9110.Message.Content.Negotiation.QualityValue
+        public typealias Output = RFC_9110.Negotiation.QualityValue
 
-        public typealias Failure = RFC_9110.Message.Content.Negotiation.QualityValue.Error
+        public typealias Failure = RFC_9110.Negotiation.QualityValue.Error
 
         public init() {}
 
@@ -89,9 +89,9 @@ extension RFC_9110.Message.Content.Negotiation.QualityValue {
     }
 }
 
-extension RFC_9110.Message.Content.Negotiation.QualityValue: Coder.Codable {}
+extension RFC_9110.Negotiation.QualityValue: Coder.Codable {}
 
-extension RFC_9110.Message.Content.Negotiation.QualityValue {
+extension RFC_9110.Negotiation.QualityValue {
 
     public static func parse(_ string: String) -> Self? {
         var input = [Byte](utf8: string)[...]

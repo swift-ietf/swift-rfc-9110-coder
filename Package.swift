@@ -32,6 +32,7 @@ let package = Package(
         .package(url: "https://github.com/swift-molecules/swift-cursor-coder.git", branch: "main"),
         .package(url: "https://github.com/swift-molecules/swift-iterator-coder.git", branch: "main"),
         .package(url: "https://github.com/swift-ietf/swift-rfc-5322.git", branch: "main"),
+        .package(url: "https://github.com/swift-ietf/swift-rfc-5322-coder.git", branch: "main"),
         .package(url: "https://github.com/swift-ietf/swift-rfc-9110.git", branch: "main"),
     ],
     targets: [
@@ -53,6 +54,7 @@ let package = Package(
                 .product(name: "Parser Error", package: "swift-parser"),
                 .product(name: "Product", package: "swift-product"),
                 .product(name: "RFC 5322", package: "swift-rfc-5322"),
+                .product(name: "RFC 5322 Coder", package: "swift-rfc-5322-coder"),
                 .product(name: "RFC 9110", package: "swift-rfc-9110"),
                 .product(name: "Serializer", package: "swift-serializer"),
                 .product(

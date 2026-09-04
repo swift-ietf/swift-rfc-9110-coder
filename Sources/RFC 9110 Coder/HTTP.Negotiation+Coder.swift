@@ -1,6 +1,6 @@
 public import RFC_9110
 
-extension RFC_9110.Message.Content.Negotiation {
+extension RFC_9110.Negotiation {
 
     public static func selectMediaType(
         from available: [RFC_9110.MediaType],

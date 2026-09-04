@@ -12,7 +12,7 @@ import Either
 import Iterator_Coder
 import Parser_Error
 
-extension RFC_9110.Message.Content.Negotiation {
+extension RFC_9110.Negotiation {
 
     public struct Weighted<Value: Coding>: Coding
     where
@@ -26,7 +26,7 @@ extension RFC_9110.Message.Content.Negotiation {
 
         public typealias Output = (
             value: Value.Output,
-            quality: RFC_9110.Message.Content.Negotiation.QualityValue
+            quality: RFC_9110.Negotiation.QualityValue
         )
 
         public typealias Failure = Error
@@ -53,8 +53,8 @@ extension RFC_9110.Message.Content.Negotiation {
             }
             input.seek(to: mark)
 
-            do throws(RFC_9110.Message.Content.Negotiation.Weight.Error) {
-                let quality = try RFC_9110.Message.Content.Negotiation.Weight.Coder<Input, Buffer>().parse(&input)
+            do throws(RFC_9110.Negotiation.Weight.Error) {
+                let quality = try RFC_9110.Negotiation.Weight.Coder<Input, Buffer>().parse(&input)
                 return (value: parsed, quality: quality)
             } catch {
                 input.seek(to: mark)
@@ -70,8 +70,8 @@ extension RFC_9110.Message.Content.Negotiation {
             }
 
             guard output.quality != .default else { return }
-            do throws(RFC_9110.Message.Content.Negotiation.Weight.Error) {
-                try RFC_9110.Message.Content.Negotiation.Weight.Coder<Input, Buffer>()
+            do throws(RFC_9110.Negotiation.Weight.Error) {
+                try RFC_9110.Negotiation.Weight.Coder<Input, Buffer>()
                     .serialize(output.quality, into: &buffer)
             } catch {
                 throw .weight(error)
@@ -80,37 +80,37 @@ extension RFC_9110.Message.Content.Negotiation {
     }
 }
 
-extension RFC_9110.Message.Content.Negotiation.Weighted {
+extension RFC_9110.Negotiation.Weighted {
 
     public enum Error: Swift.Error {
         case value(Value.Failure)
-        case weight(RFC_9110.Message.Content.Negotiation.Weight.Error)
+        case weight(RFC_9110.Negotiation.Weight.Error)
     }
 }
 
-extension RFC_9110.Message.Content.Negotiation.Weighted.Error: Equatable where Value.Failure: Equatable {}
+extension RFC_9110.Negotiation.Weighted.Error: Equatable where Value.Failure: Equatable {}
 
-extension RFC_9110.Message.Content.Negotiation {
+extension RFC_9110.Negotiation {
 
     public enum Weight {}
 }
 
-extension RFC_9110.Message.Content.Negotiation.Weight {
+extension RFC_9110.Negotiation.Weight {
 
     public struct Coder<Input: Cursor.`Protocol`<Byte, Never>, Buffer: RangeReplaceableCollection<Byte>>: Coding {
 
-        public typealias Failure = RFC_9110.Message.Content.Negotiation.Weight.Error
+        public typealias Failure = RFC_9110.Negotiation.Weight.Error
 
         public init() {}
 
         @Coder::Coder.Builder<Input, Buffer>
-        public var body: some Coding<Input, RFC_9110.Message.Content.Negotiation.QualityValue, Buffer, Failure> {
+        public var body: some Coding<Input, RFC_9110.Negotiation.QualityValue, Buffer, Failure> {
             Coder::Coder.Sequence(Input.self, Buffer.self) {
                 RFC_9110.OWS.Coder()
                 ";"
                 RFC_9110.OWS.Coder()
                 Parser.OneOf.Two([Byte].Coder("q="), [Byte].Coder("Q="))
-                RFC_9110.Message.Content.Negotiation.QualityValue.Coder()
+                RFC_9110.Negotiation.QualityValue.Coder()
             }
             .error.map { (failure) -> Failure in
                 switch failure {
@@ -123,6 +123,6 @@ extension RFC_9110.Message.Content.Negotiation.Weight {
 
     public enum Error: Swift.Error, Equatable {
         case expectedWeight
-        case quality(RFC_9110.Message.Content.Negotiation.QualityValue.Error)
+        case quality(RFC_9110.Negotiation.QualityValue.Error)
     }
 }
