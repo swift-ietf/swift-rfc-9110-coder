@@ -1,15 +1,10 @@
+import Pair
 public import Byte
-import Byte_Standard_Library_Integration
-public import Cursor_Standard_Library_Integration
-public import Coder
 public import Cursor
+public import Coder
 public import RFC_9110
-import Cursor_Coder
 import Either
-import Cursor_Parser_OneOf
-import Iterator_Coder
 import Parser
-import Parser_Error
 import Product
 import Serializer
 
@@ -21,25 +16,32 @@ extension RFC_9110.Parameter {
 
         public init() {}
 
-        @Coder::Coder.Builder<Input, Buffer>
+        @Coder::Builder<Input, Buffer>
         public var body: some Coding<Input, RFC_9110.Parameter, Buffer, Failure> {
-            Coder::Coder.Sequence(Input.self, Buffer.self) {
+            Coder::Coder(Input.self, Buffer.self) {
                 RFC_9110.Token.Coder()
-                "="
-                Parser.OneOf.Two(
+                Coder::ConsumingLiteral<Input, Buffer>([Byte](utf8: "="))
+                Parser::OneOf.Two(
                     RFC_9110.Token.Coder().map(to: \.rawValue, from: { RFC_9110.Token(unchecked: $0) }),
                     RFC_9110.QuotedString.Coder()
-                )
+                , rejectFirst: { if case .empty = $0 { return true }; return false }, rejectSecond: { if case .expectedOpenQuote = $0 { return true }; return false },
+                    serializationRejectFirst: { failure in
+                        switch failure {
+                        case .empty, .invalidCharacter: true
+                        }
+                    })
             }
             .map(
-                to: { output in RFC_9110.Parameter(name: output.0, value: output.1) },
-                from: { ($0.name, $0.value) }
+                to: { output in RFC_9110.Parameter(name: output.first, value: output.second) },
+                from: { .init($0.name, $0.value) }
             )
-            .error.map { (failure) -> Failure in
+            .mapFailure { (failure) -> Failure in
                 switch failure {
                 case .left(.left(let error)): .expectedName(error)
                 case .left(.right): .expectedEquals
-                case .right(let alternatives): .invalidValue(alternatives.values.1)
+                case .right(.first(let error)): .invalidTokenValue(error)
+                case .right(.second(let error)): .invalidValue(error)
+                case .right(.rejected(_, let error)): .invalidValue(error)
                 }
             }
         }
@@ -48,13 +50,13 @@ extension RFC_9110.Parameter {
     public static var coder: Coder<ArraySlice<Byte>, [Byte]> { .init() }
 
     public enum Error: Swift.Error, Equatable {
+        case expectedPrefix
         case expectedName(RFC_9110.Token.Error)
+        case invalidTokenValue(RFC_9110.Token.Error)
         case expectedEquals
         case invalidValue(RFC_9110.QuotedString.Error)
     }
 }
-
-extension RFC_9110.Parameter: Coder.Codable {}
 
 extension RFC_9110.Parameter {
 
@@ -64,18 +66,18 @@ extension RFC_9110.Parameter {
 
         public init() {}
 
-        @Coder::Coder.Builder<Input, Buffer>
+        @Coder::Builder<Input, Buffer>
         public var body: some Coding<Input, RFC_9110.Parameter, Buffer, Failure> {
-            Coder::Coder.Sequence(Input.self, Buffer.self) {
+            Coder::Coder(Input.self, Buffer.self) {
                 RFC_9110.OWS.Coder()
-                ";"
+                Coder::ConsumingLiteral<Input, Buffer>([Byte](utf8: ";"))
                 RFC_9110.OWS.Coder(canonical: " ")
                 RFC_9110.Parameter.Coder()
             }
-            .error.map { (failure) -> Failure in
+            .mapFailure { (failure) -> Failure in
                 switch failure {
                 case .right(let error): error
-                default: .expectedName(.empty)
+                default: .expectedPrefix
                 }
             }
         }

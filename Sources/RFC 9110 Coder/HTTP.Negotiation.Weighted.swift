@@ -4,13 +4,7 @@ public import Cursor
 public import Parser
 public import RFC_9110
 public import Serializer
-import Byte_Standard_Library_Integration
-import Cursor_Coder
-import Cursor_Parser_OneOf
-import Cursor_Standard_Library_Integration
 import Either
-import Iterator_Coder
-import Parser_Error
 
 extension RFC_9110.Negotiation {
 
@@ -103,16 +97,16 @@ extension RFC_9110.Negotiation.Weight {
 
         public init() {}
 
-        @Coder::Coder.Builder<Input, Buffer>
+        @Coder::Builder<Input, Buffer>
         public var body: some Coding<Input, RFC_9110.Negotiation.QualityValue, Buffer, Failure> {
-            Coder::Coder.Sequence(Input.self, Buffer.self) {
+            Coder::Coder(Input.self, Buffer.self) {
                 RFC_9110.OWS.Coder()
-                ";"
+                Coder::ConsumingLiteral<Input, Buffer>([Byte](utf8: ";"))
                 RFC_9110.OWS.Coder()
-                Parser.OneOf.Two([Byte].Coder("q="), [Byte].Coder("Q="))
+                Parser::OneOf.Two(Coder::ConsumingLiteral<Input, Buffer>([Byte](utf8: "q=")), Coder::ConsumingLiteral<Input, Buffer>([Byte](utf8: "Q=")), rejectFirst: { _ in true }, rejectSecond: { _ in true })
                 RFC_9110.Negotiation.QualityValue.Coder()
             }
-            .error.map { (failure) -> Failure in
+            .mapFailure { (failure) -> Failure in
                 switch failure {
                 case .right(let error): .quality(error)
                 default: .expectedWeight

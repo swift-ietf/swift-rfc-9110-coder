@@ -1,18 +1,10 @@
 public import Byte
-import Byte_Standard_Library_Integration
-import Cursor_Standard_Library_Integration
 public import Coder
 public import Cursor
 public import Parser
 public import RFC_9110
 public import Serializer
-import Cursor_Coder
-import Cursor_Parser_Many
-import Cursor_Parser_OneOf
-import Cursor_Parser_Optionally
 import Either
-import Iterator_Coder
-import Parser_Error
 
 extension RFC_9110.Field.Value {
 
@@ -31,9 +23,11 @@ extension RFC_9110.Field.Value {
         public typealias Failure = Error
 
         public let element: Element
+        public let rejected: (Element.Failure) -> Bool
 
-        public init(_ element: Element) {
+        public init(_ element: Element, rejected: @escaping (Element.Failure) -> Bool = { _ in false }) {
             self.element = element
+            self.rejected = rejected
         }
 
         public borrowing func parse(_ input: inout Input) throws(Failure) -> Output {
@@ -46,8 +40,13 @@ extension RFC_9110.Field.Value {
                 input.seek(to: mark)
             }
 
-            do throws(Parser.Many<Input, Element>.Separated<RFC_9110.Field.Value.Delimiter.Coder<Input, Buffer>>.Error) {
-                return try Parser.Many.Separated(element, separator: RFC_9110.Field.Value.Delimiter.Coder<Input, Buffer>())
+            let probe = input.checkpoint
+            let hasElement = input.next() != nil
+            input.seek(to: probe)
+            if !hasElement { return [] }
+
+            do throws(Parser::Many<Input, Element>.Separated<RFC_9110.Field.Value.Delimiter.Coder<Input, Buffer>>.Error) {
+                return try Parser::Many.Separated(element, separator: RFC_9110.Field.Value.Delimiter.Coder<Input, Buffer>(), rejected: rejected, separatorRejected: { if case .expectedComma = $0 { return true }; return false })
                     .parse(&input)
             } catch {
                 throw Self.error(error)
@@ -55,8 +54,8 @@ extension RFC_9110.Field.Value {
         }
 
         public borrowing func serialize(_ output: Output, into buffer: inout Buffer) throws(Failure) {
-            do throws(Parser.Many<Input, Element>.Separated<RFC_9110.Field.Value.Delimiter.Coder<Input, Buffer>>.Error) {
-                try Parser.Many.Separated(element, separator: RFC_9110.Field.Value.Delimiter.Coder<Input, Buffer>())
+            do throws(Parser::Many<Input, Element>.Separated<RFC_9110.Field.Value.Delimiter.Coder<Input, Buffer>>.Error) {
+                try Parser::Many.Separated(element, separator: RFC_9110.Field.Value.Delimiter.Coder<Input, Buffer>(), rejected: rejected, separatorRejected: { if case .expectedComma = $0 { return true }; return false })
                     .serialize(output, into: &buffer)
             } catch {
                 throw Self.error(error)
@@ -64,7 +63,7 @@ extension RFC_9110.Field.Value {
         }
 
         static func error(
-            _ failure: Parser.Many<Input, Element>.Separated<RFC_9110.Field.Value.Delimiter.Coder<Input, Buffer>>.Error
+            _ failure: Parser::Many<Input, Element>.Separated<RFC_9110.Field.Value.Delimiter.Coder<Input, Buffer>>.Error
         ) -> Failure {
             switch failure {
             case .element(let error): .element(error)
@@ -107,7 +106,7 @@ extension RFC_9110.Field.Value.Delimiter {
             var commas = 0
             while true {
                 let mark = input.checkpoint
-                _ = Whitespace.skip(&input)
+                _ = RFC_9110.Whitespace.skip(&input)
                 guard let byte = input.next(), byte.bitPattern == 0x2C else {
                     input.seek(to: mark)
                     break
@@ -115,7 +114,7 @@ extension RFC_9110.Field.Value.Delimiter {
                 commas += 1
             }
             guard commas > 0 else { throw .expectedComma }
-            _ = Whitespace.skip(&input)
+            _ = RFC_9110.Whitespace.skip(&input)
         }
 
         public borrowing func serialize(_ output: Void, into buffer: inout Buffer) throws(Failure) {
@@ -138,11 +137,16 @@ extension RFC_9110.Field.Value {
 
     public static func directives(in headerValue: String) -> [(name: String, value: String?)] {
         var input = [Byte](utf8: headerValue)[...]
-        return (try? List(Directive.Coder<ArraySlice<Byte>, [Byte]>()).parse(&input)) ?? []
+        return (try? List(RFC_9110.Field.Value.Directive.Coder<ArraySlice<Byte>, [Byte]>()).parse(&input)) ?? []
     }
 }
 
-enum Directive {
+extension RFC_9110.Field.Value {
+
+    enum Directive {}
+}
+
+extension RFC_9110.Field.Value.Directive {
 
     struct Coder<Input: Cursor.`Protocol`<Byte, Never>, Buffer: RangeReplaceableCollection<Byte>>: Coding {
 

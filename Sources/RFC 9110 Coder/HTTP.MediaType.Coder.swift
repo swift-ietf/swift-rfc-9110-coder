@@ -1,15 +1,10 @@
+import Pair
 public import Byte
-import Byte_Standard_Library_Integration
-public import Cursor_Standard_Library_Integration
-public import Coder
 public import Cursor
+public import Coder
 public import RFC_9110
-import Cursor_Coder
 import Either
-import Cursor_Parser_Many
-import Iterator_Coder
 import Parser
-import Parser_Error
 import Serializer
 
 extension RFC_9110.MediaType {
@@ -20,30 +15,29 @@ extension RFC_9110.MediaType {
 
         public init() {}
 
-        @Coder::Coder.Builder<Input, Buffer>
+        @Coder::Builder<Input, Buffer>
         public var body: some Coding<Input, RFC_9110.MediaType, Buffer, Failure> {
-            Coder::Coder.Sequence(Input.self, Buffer.self) {
+            Coder::Coder(Input.self, Buffer.self) {
                 RFC_9110.OWS.Coder()
                 RFC_9110.Token.Coder()
-                "/"
+                Coder::ConsumingLiteral<Input, Buffer>([Byte](utf8: "/"))
                 RFC_9110.Token.Coder()
-                Parser.Many(RFC_9110.Parameter.Prefixed())
+                Parser::Many(RFC_9110.Parameter.Prefixed(), rejected: { if case .expectedPrefix = $0 { return true }; return false })
             }
             .map(
                 to: { output in
-                    RFC_9110.MediaType(output.0.rawValue, output.1.rawValue, parameters: output.2.dictionary)
+                    RFC_9110.MediaType(output.first.first.rawValue, output.first.second.rawValue, parameters: output.second.dictionary)
                 },
                 from: {
-                    (
-                        RFC_9110.Token(unchecked: $0.type),
-                        RFC_9110.Token(unchecked: $0.subtype),
+                    .init(
+                        .init(RFC_9110.Token(unchecked: $0.type), RFC_9110.Token(unchecked: $0.subtype)),
                         [RFC_9110.Parameter].sorted($0.parameters)
                     )
                 }
             )
-            .error.map { (failure) -> Failure in
+            .mapFailure { (failure) -> Failure in
                 switch failure {
-                case .left(.left(.left(let error))): .expectedType(error.value)
+                case .left(.left(.left(let error))): .expectedType(error)
                 case .left(.left(.right)): .expectedSlash
                 case .left(.right(let error)): .expectedSubtype(error)
                 case .right(.element(let error)): .invalidParameter(error)
@@ -62,8 +56,6 @@ extension RFC_9110.MediaType {
         case invalidParameter(RFC_9110.Parameter.Error)
     }
 }
-
-extension RFC_9110.MediaType: Coder.Codable {}
 
 extension RFC_9110.MediaType {
 

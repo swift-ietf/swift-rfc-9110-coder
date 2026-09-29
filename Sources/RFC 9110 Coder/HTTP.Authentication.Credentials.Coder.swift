@@ -1,13 +1,10 @@
+import Pair
 public import Byte
-import Byte_Standard_Library_Integration
-public import Cursor_Standard_Library_Integration
-public import Coder
 public import Cursor
+public import Coder
 public import RFC_9110
-import Cursor_Coder
 import Either
 import Parser
-import Parser_Error
 import Serializer
 
 extension RFC_9110.Authentication.Credentials {
@@ -18,23 +15,23 @@ extension RFC_9110.Authentication.Credentials {
 
         public init() {}
 
-        @Coder::Coder.Builder<Input, Buffer>
+        @Coder::Builder<Input, Buffer>
         public var body: some Coding<Input, RFC_9110.Authentication.Credentials, Buffer, Failure> {
-            Coder::Coder.Sequence(Input.self, Buffer.self) {
+            Coder::Coder(Input.self, Buffer.self) {
                 RFC_9110.OWS.Coder()
                 RFC_9110.Token.Coder()
                 RFC_9110.RWS.Coder()
-                Remainder.Coder()
+                RFC_9110.Authentication.Credentials.Remainder.Coder()
             }
             .map(
                 to: { output in
-                    RFC_9110.Authentication.Credentials(scheme: .init(output.0.rawValue), token: output.1)
+                    RFC_9110.Authentication.Credentials(scheme: .init(output.first.rawValue), token: output.second)
                 },
-                from: { (RFC_9110.Token(unchecked: $0.scheme.name), $0.token) }
+                from: { .init(RFC_9110.Token(unchecked: $0.scheme.name), $0.token) }
             )
-            .error.map { (failure) -> Failure in
+            .mapFailure { (failure) -> Failure in
                 switch failure {
-                case .left(.left(let error)): .expectedScheme(error.value)
+                case .left(.left(let error)): .expectedScheme(error)
                 default: .expectedToken
                 }
             }
@@ -49,7 +46,6 @@ extension RFC_9110.Authentication.Credentials {
     }
 }
 
-extension RFC_9110.Authentication.Credentials: Coder.Codable {}
 
 extension RFC_9110.Authentication.Credentials {
 
@@ -63,13 +59,18 @@ extension RFC_9110.Authentication.Credentials {
     }
 }
 
-enum Remainder {
+extension RFC_9110.Authentication.Credentials {
+
+    enum Remainder {}
+}
+
+extension RFC_9110.Authentication.Credentials.Remainder {
 
     struct Coder<Input: Cursor.`Protocol`<Byte, Never>, Buffer: RangeReplaceableCollection<Byte>>: Coding {
 
         typealias Output = String
 
-        typealias Failure = Error
+        typealias Failure = RFC_9110.Authentication.Credentials.Remainder.Error
 
         borrowing func parse(_ input: inout Input) throws(Failure) -> String {
             var bytes: [UInt8] = []

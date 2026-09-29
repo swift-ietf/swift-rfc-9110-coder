@@ -1,9 +1,5 @@
 public import RFC_5322
 public import RFC_9110
-import Byte
-import Byte_Standard_Library_Integration
-import Coder
-import RFC_5322_Coder
 
 extension RFC_5322.DateTime {
 
@@ -12,7 +8,11 @@ extension RFC_5322.DateTime {
     }
 
     public init?(_ value: RFC_9110.Field.Value) {
-        guard let parsed = parseHTTPDate(value.rawValue) else {
+        self.init(httpDate: value.rawValue)
+    }
+
+    init?(httpDate string: String) {
+        guard let parsed = parseHTTPDate(string) else {
             return nil
         }
         self = parsed
@@ -144,9 +144,7 @@ private func isHTTPDateSpace(_ character: Character) -> Bool {
 
 extension RFC_5322.DateTime {
 
-    var text: String {
-        var buffer: [Byte] = []
-        try? RFC_5322.DateTime.coder.serialize(self, into: &buffer)
-        return String(decoding: buffer, as: UTF8.self)
+    var httpDate: String {
+        imfFixdate(self)
     }
 }

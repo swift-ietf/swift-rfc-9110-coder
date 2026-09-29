@@ -27,7 +27,7 @@ extension RFC_9110.OWS {
         }
 
         public borrowing func parse(_ input: inout Input) {
-            _ = Whitespace.skip(&input)
+            _ = RFC_9110.Whitespace.skip(&input)
         }
 
         public borrowing func serialize(_ output: Void, into buffer: inout Buffer) {
@@ -51,7 +51,7 @@ extension RFC_9110.RWS {
         }
 
         public borrowing func parse(_ input: inout Input) throws(Error) {
-            guard Whitespace.skip(&input) > 0 else { throw .expectedWhitespace }
+            guard RFC_9110.Whitespace.skip(&input) > 0 else { throw .expectedWhitespace }
         }
 
         public borrowing func serialize(_ output: Void, into buffer: inout Buffer) throws(Failure) {
@@ -64,7 +64,12 @@ extension RFC_9110.RWS {
     }
 }
 
-enum Whitespace {
+extension RFC_9110 {
+
+    enum Whitespace {}
+}
+
+extension RFC_9110.Whitespace {
 
     static func isWhitespace(_ byte: Byte) -> Bool {
         byte.bitPattern == 0x20 || byte.bitPattern == 0x09

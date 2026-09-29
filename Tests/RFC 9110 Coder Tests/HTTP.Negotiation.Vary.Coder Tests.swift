@@ -1,8 +1,7 @@
-import Foundation
 import Testing
 
 import RFC_9110
-@testable import RFC_9110_Coder
+import RFC_9110_Coder
 
 @Suite
 struct `HTTP.Negotiation.Vary.Coder Tests` {

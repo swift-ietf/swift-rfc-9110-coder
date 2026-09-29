@@ -1,6 +1,5 @@
 import Byte
-import Byte_Standard_Library_Integration
-import Cursor_Standard_Library_Integration
+import Cursor
 import Coder
 import Parser
 import RFC_9110
@@ -109,5 +108,21 @@ struct `HTTP.Token.Coder Tests` {
         try list.serialize([try HTTP.Token("gzip"), try HTTP.Token("br")], into: &bytes)
 
         #expect(bytes == "gzip, br".utf8.map(Byte.init(bitPattern:)))
+    }
+}
+
+
+extension `HTTP.Token.Coder Tests` {
+    @Test func `malformed field elements do not terminate a list successfully`() {
+        var input = [Byte](utf8: "ok,=invalid")[...]
+        #expect(throws: HTTP.Field.Value.List<HTTP.Token.Coder<ArraySlice<Byte>, [Byte]>>.Error.self) {
+            try HTTP.Field.Value.List(HTTP.Token.coder).parse(&input)
+        }
+    }
+
+    @Test func `empty field lists do not invoke an element parser`() throws {
+        var input = [Byte](utf8: " ")[...]
+        let result = try HTTP.Field.Value.List(HTTP.Token.coder).parse(&input)
+        #expect(result.isEmpty)
     }
 }

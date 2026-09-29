@@ -1,15 +1,10 @@
+import Pair
 public import Byte
-import Byte_Standard_Library_Integration
-public import Cursor_Standard_Library_Integration
-public import Coder
 public import Cursor
+public import Coder
 public import RFC_9110
-import Cursor_Coder
 import Either
-import Cursor_Parser_Optionally
-import Iterator_Coder
 import Parser
-import Parser_Error
 import Serializer
 
 extension RFC_9110.Representation.Validator.EntityTag {
@@ -20,18 +15,23 @@ extension RFC_9110.Representation.Validator.EntityTag {
 
         public init() {}
 
-        @Coder::Coder.Builder<Input, Buffer>
+        @Coder::Builder<Input, Buffer>
         public var body: some Coding<Input, RFC_9110.Representation.Validator.EntityTag, Buffer, Failure> {
-            Coder::Coder.Sequence(Input.self, Buffer.self) {
+            Coder::Coder(Input.self, Buffer.self) {
                 RFC_9110.OWS.Coder()
-                Parser.Optionally([Byte].Coder("W/"))
+                Parser::Optionally(Coder::ConsumingLiteral<Input, Buffer>([Byte](utf8: "W/")), rejected: { _ in true })
                 RFC_9110.QuotedString.Coder()
             }
             .map(
-                to: { output in RFC_9110.Representation.Validator.EntityTag(value: output.1, isWeak: output.0 != nil) },
-                from: { ($0.isWeak ? Optional(()) : nil, $0.value) }
+                to: { output in RFC_9110.Representation.Validator.EntityTag(value: output.second, isWeak: output.first != nil) },
+                from: { .init($0.isWeak ? Optional(()) : nil, $0.value) }
             )
-            .error.map { (failure) -> Failure in .expectedOpaqueTag(failure.value) }
+            .mapFailure { (failure) -> Failure in
+                switch failure {
+                case .left: .expectedOpaqueTag(.expectedOpenQuote)
+                case .right(let error): .expectedOpaqueTag(error)
+                }
+            }
         }
     }
 
@@ -41,8 +41,6 @@ extension RFC_9110.Representation.Validator.EntityTag {
         case expectedOpaqueTag(RFC_9110.QuotedString.Error)
     }
 }
-
-extension RFC_9110.Representation.Validator.EntityTag: Coder.Codable {}
 
 extension RFC_9110.Representation.Validator.EntityTag {
 

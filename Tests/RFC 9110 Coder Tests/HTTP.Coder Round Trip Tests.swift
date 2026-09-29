@@ -1,6 +1,6 @@
 import Byte
-import Byte_Standard_Library_Integration
-import Cursor_Standard_Library_Integration
+import Byte
+import Cursor
 import Coder
 import Parser
 import RFC_9110

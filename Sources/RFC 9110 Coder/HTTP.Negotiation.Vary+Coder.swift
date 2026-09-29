@@ -20,7 +20,7 @@ extension RFC_9110.Negotiation.Vary {
     }
 }
 
-extension RFC_9110.Negotiation.Vary: LosslessStringConvertible {
+extension RFC_9110.Negotiation.Vary: @retroactive LosslessStringConvertible {
 
     public init?(_ description: String) {
         guard let parsed = Self.parse(description) else { return nil }

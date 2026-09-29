@@ -1,6 +1,6 @@
 public import Byte
-import Byte_Standard_Library_Integration
-public import Cursor_Standard_Library_Integration
+import Byte
+public import Cursor
 public import Coder
 public import Cursor
 public import RFC_9110
@@ -40,7 +40,7 @@ extension RFC_9110.QuotedString {
                     guard let escaped = input.next() else {
                         throw .unexpectedEndOfInput
                     }
-                    guard Self.isQuotedPair(escaped.bitPattern) else {
+                    guard Self.isQuotedPair(escaped) else {
                         throw .invalidEscapeSequence
                     }
                     bytes.append(escaped.bitPattern)
@@ -65,14 +65,14 @@ extension RFC_9110.QuotedString {
                     buffer.append(Byte(bitPattern: byte))
 
                 default:
-                    throw .invalidCharacter(byte)
+                    throw .invalidCharacter(Byte(bitPattern: byte))
                 }
             }
             buffer.append(Byte(bitPattern: 0x22))
         }
 
-        static func isQuotedPair(_ byte: UInt8) -> Bool {
-            byte == 0x09 || (0x20...0x7E).contains(byte) || byte >= 0x80
+        static func isQuotedPair(_ byte: Byte) -> Bool {
+            byte.bitPattern == 0x09 || (0x20...0x7E).contains(byte.bitPattern) || byte.bitPattern >= 0x80
         }
     }
 
@@ -82,6 +82,6 @@ extension RFC_9110.QuotedString {
         case expectedOpenQuote
         case unexpectedEndOfInput
         case invalidEscapeSequence
-        case invalidCharacter(UInt8)
+        case invalidCharacter(Byte)
     }
 }

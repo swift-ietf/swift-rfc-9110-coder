@@ -8,7 +8,7 @@ extension RFC_9110.Representation.Validator: @retroactive CustomStringConvertibl
             return entityTag.headerValue
 
         case .lastModified(let lastModified):
-            return lastModified.text
+            return lastModified.httpDate
         }
     }
 }

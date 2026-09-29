@@ -1,8 +1,6 @@
 public import Byte
-import Byte_Standard_Library_Integration
-public import Cursor_Standard_Library_Integration
-public import Coder
 public import Cursor
+public import Coder
 public import RFC_9110
 import Parser
 import Serializer
@@ -89,7 +87,6 @@ extension RFC_9110.Negotiation.QualityValue {
     }
 }
 
-extension RFC_9110.Negotiation.QualityValue: Coder.Codable {}
 
 extension RFC_9110.Negotiation.QualityValue {
 
