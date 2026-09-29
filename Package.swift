@@ -9,6 +9,7 @@ let package = Package(
         .iOS(.v27),
         .tvOS(.v27),
         .watchOS(.v27),
+        .visionOS(.v27),
     ],
     products: [
         .library(
@@ -19,8 +20,8 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/swift-atoms/swift-byte.git", branch: "main"),
         .package(url: "https://github.com/swift-atoms/swift-coder.git", branch: "main", traits: ["Checkpoint", "Map", "Pair", "Predicate", "Repetition", "Skip", "Choice", "Either", "IteratorLeaves"]),
-        .package(url: "https://github.com/swift-atoms/swift-parser.git", branch: "main", traits: ["Always", "Choice", "Either", "FlatMap", "IteratorLeaves", "Map", "Repetition"]),
-        .package(url: "https://github.com/swift-atoms/swift-serializer.git", branch: "main"),
+        .package(url: "https://github.com/swift-atoms/swift-parser.git", branch: "main", traits: ["Always", "Choice", "Either", "FlatMap", "IteratorLeaves", "Map", "Repetition", "Pair", "Predicate", "Skip"]),
+        .package(url: "https://github.com/swift-atoms/swift-serializer.git", branch: "main", traits: ["Either", "Map", "Pair", "Repetition"]),
         .package(
             url: "https://github.com/swift-atoms/swift-standard-library-extensions.git",
             branch: "main"
