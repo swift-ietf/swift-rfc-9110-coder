@@ -131,7 +131,7 @@ extension RFC_9110.Field.Value {
 
     public static func tokens(in headerValue: String) -> [String] {
         var input = [Byte](utf8: headerValue)[...]
-        let tokens = (try? List(RFC_9110.Token.coder).parse(&input)) ?? []
+        let tokens = (try? List(RFC_9110.Token.coder, rejected: { $0 == .empty }).parse(&input)) ?? []
         return tokens.map(\.rawValue)
     }
 

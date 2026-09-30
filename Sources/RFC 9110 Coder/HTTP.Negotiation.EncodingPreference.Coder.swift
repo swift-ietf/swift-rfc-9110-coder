@@ -17,7 +17,7 @@ extension RFC_9110.Negotiation.EncodingPreference {
         public init() {}
 
         public var body: some Coding<Input, RFC_9110.Negotiation.EncodingPreference, Buffer, Failure> {
-            RFC_9110.Negotiation.Weighted(RFC_9110.Token.Coder<Input, Buffer>())
+            return RFC_9110.Negotiation.Weighted(RFC_9110.Token.Coder<Input, Buffer>())
                 .map(
                     to: {
                         RFC_9110.Negotiation.EncodingPreference(

@@ -14,7 +14,7 @@ extension RFC_9110.Negotiation.LanguagePreference {
         public init() {}
 
         public var body: some Coding<Input, RFC_9110.Negotiation.LanguagePreference, Buffer, Failure> {
-            RFC_9110.Negotiation.Weighted(RFC_9110.Token.Coder<Input, Buffer>())
+            return RFC_9110.Negotiation.Weighted(RFC_9110.Token.Coder<Input, Buffer>())
                 .map(
                     to: { RFC_9110.Negotiation.LanguagePreference(language: $0.value.rawValue, quality: $0.quality) },
                     from: { (value: RFC_9110.Token(unchecked: $0.language), quality: $0.quality) }
