@@ -67,6 +67,12 @@ extension RFC_9110.Authentication.Credentials {
 extension RFC_9110.Authentication.Credentials.Remainder {
 
     struct Coder<Input: Cursor.`Protocol`<Byte, Never>, Buffer: RangeReplaceableCollection<Byte>>: Coding {
+        public var body: Never {
+            borrowing get {
+                return fatalError("\(Self.self) is a leaf coder: implement parse and serialize directly")
+            }
+        }
+
 
         typealias Output = String
 
