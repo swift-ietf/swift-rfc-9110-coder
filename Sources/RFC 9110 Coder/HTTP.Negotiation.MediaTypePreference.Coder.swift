@@ -8,11 +8,6 @@ import Serializer
 extension RFC_9110.Negotiation.MediaTypePreference {
 
     public struct Coder<Input: Cursor.`Protocol`<Byte, Never>, Buffer: RangeReplaceableCollection<Byte>>: Coding {
-        public var body: Never {
-            borrowing get {
-                return fatalError("\(Self.self) is a leaf coder: implement parse and serialize directly")
-            }
-        }
 
 
         public typealias Output = RFC_9110.Negotiation.MediaTypePreference

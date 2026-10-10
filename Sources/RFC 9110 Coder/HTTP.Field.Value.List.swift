@@ -14,11 +14,6 @@ extension RFC_9110.Field.Value {
         Element.Buffer: RangeReplaceableCollection<Byte>,
         Element.Output: Copyable & Escapable
     {
-        public var body: Never {
-            borrowing get {
-                return fatalError("\(Self.self) is a leaf coder: implement parse and serialize directly")
-            }
-        }
 
         public typealias Input = Element.Input
 
@@ -97,11 +92,6 @@ extension RFC_9110.Field.Value {
 extension RFC_9110.Field.Value.Delimiter {
 
     public struct Coder<Input: Cursor.`Protocol`<Byte, Never>, Buffer: RangeReplaceableCollection<Byte>>: Coding {
-        public var body: Never {
-            borrowing get {
-                return fatalError("\(Self.self) is a leaf coder: implement parse and serialize directly")
-            }
-        }
 
 
         public typealias Output = Void
@@ -161,11 +151,6 @@ extension RFC_9110.Field.Value {
 extension RFC_9110.Field.Value.Directive {
 
     struct Coder<Input: Cursor.`Protocol`<Byte, Never>, Buffer: RangeReplaceableCollection<Byte>>: Coding {
-        public var body: Never {
-            borrowing get {
-                return fatalError("\(Self.self) is a leaf coder: implement parse and serialize directly")
-            }
-        }
 
 
         typealias Output = (name: String, value: String?)
