@@ -61,7 +61,7 @@ extension RFC_9110.RWS {
         }
     }
 
-    public enum Error: Swift.Error, Equatable {
+    public enum Error: Swift::Error, Equatable {
         case expectedWhitespace
     }
 }

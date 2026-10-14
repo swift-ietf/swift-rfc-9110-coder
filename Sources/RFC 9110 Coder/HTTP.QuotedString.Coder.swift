@@ -1,5 +1,4 @@
 public import Byte
-import Byte
 public import Cursor
 public import Coder
 public import Cursor
@@ -79,7 +78,7 @@ extension RFC_9110.QuotedString {
 
     public static var coder: Coder<ArraySlice<Byte>, [Byte]> { .init() }
 
-    public enum Error: Swift.Error, Equatable {
+    public enum Error: Swift::Error, Equatable {
         case expectedOpenQuote
         case unexpectedEndOfInput
         case invalidEscapeSequence

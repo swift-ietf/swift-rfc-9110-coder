@@ -54,7 +54,7 @@ extension RFC_9110.Authentication.Challenge {
 
     public static var coder: Coder<ArraySlice<Byte>, [Byte]> { .init() }
 
-    public enum Error: Swift.Error, Equatable {
+    public enum Error: Swift::Error, Equatable {
         case expectedScheme(RFC_9110.Token.Error)
         case expectedParameters
         case invalidParameter(RFC_9110.Parameter.Error)

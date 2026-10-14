@@ -83,7 +83,7 @@ extension RFC_9110.Negotiation.QualityValue {
 
     public static var coder: Coder<ArraySlice<Byte>, [Byte]> { .init() }
 
-    public enum Error: Swift.Error, Equatable {
+    public enum Error: Swift::Error, Equatable {
         case invalidQValue
     }
 }

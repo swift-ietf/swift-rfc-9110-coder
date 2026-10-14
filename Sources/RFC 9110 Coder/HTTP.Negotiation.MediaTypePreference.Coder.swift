@@ -55,7 +55,7 @@ extension RFC_9110.Negotiation.MediaTypePreference {
 
     public static var coder: Coder<ArraySlice<Byte>, [Byte]> { .init() }
 
-    public enum Error: Swift.Error, Equatable {
+    public enum Error: Swift::Error, Equatable {
         case mediaType(RFC_9110.MediaType.Error)
         case weight(RFC_9110.Negotiation.QualityValue.Error)
     }

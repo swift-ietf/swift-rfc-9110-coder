@@ -37,7 +37,7 @@ extension RFC_9110.Representation.Validator.EntityTag {
 
     public static var coder: Coder<ArraySlice<Byte>, [Byte]> { .init() }
 
-    public enum Error: Swift.Error, Equatable {
+    public enum Error: Swift::Error, Equatable {
         case expectedOpaqueTag(RFC_9110.QuotedString.Error)
     }
 }

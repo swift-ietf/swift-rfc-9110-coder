@@ -1,9 +1,9 @@
 public import Byte
 public import Coder
 public import Cursor
-public import Parser
+import Parser
 public import RFC_9110
-public import Serializer
+import Serializer
 import Either
 
 extension RFC_9110.Field.Value {
@@ -76,7 +76,7 @@ extension RFC_9110.Field.Value {
 
 extension RFC_9110.Field.Value.List {
 
-    public enum Error: Swift.Error {
+    public enum Error: Swift::Error {
         case element(Element.Failure)
         case delimiter
     }
@@ -124,7 +124,7 @@ extension RFC_9110.Field.Value.Delimiter {
         }
     }
 
-    public enum Error: Swift.Error, Equatable {
+    public enum Error: Swift::Error, Equatable {
         case expectedComma
     }
 }

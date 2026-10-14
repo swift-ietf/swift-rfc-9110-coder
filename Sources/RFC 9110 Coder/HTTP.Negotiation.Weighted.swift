@@ -1,9 +1,9 @@
 public import Byte
 public import Coder
 public import Cursor
-public import Parser
+import Parser
 public import RFC_9110
-public import Serializer
+import Serializer
 import Either
 
 extension RFC_9110.Negotiation {
@@ -77,7 +77,7 @@ extension RFC_9110.Negotiation {
 
 extension RFC_9110.Negotiation.Weighted {
 
-    public enum Error: Swift.Error {
+    public enum Error: Swift::Error {
         case value(Value.Failure)
         case weight(RFC_9110.Negotiation.Weight.Error)
     }
@@ -116,7 +116,7 @@ extension RFC_9110.Negotiation.Weight {
         }
     }
 
-    public enum Error: Swift.Error, Equatable {
+    public enum Error: Swift::Error, Equatable {
         case expectedWeight
         case quality(RFC_9110.Negotiation.QualityValue.Error)
     }

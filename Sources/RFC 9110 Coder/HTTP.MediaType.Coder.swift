@@ -49,7 +49,7 @@ extension RFC_9110.MediaType {
 
     public static var coder: Coder<ArraySlice<Byte>, [Byte]> { .init() }
 
-    public enum Error: Swift.Error, Equatable {
+    public enum Error: Swift::Error, Equatable {
         case expectedType(RFC_9110.Token.Error)
         case expectedSlash
         case expectedSubtype(RFC_9110.Token.Error)

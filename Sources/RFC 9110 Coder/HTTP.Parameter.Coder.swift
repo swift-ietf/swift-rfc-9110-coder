@@ -49,7 +49,7 @@ extension RFC_9110.Parameter {
 
     public static var coder: Coder<ArraySlice<Byte>, [Byte]> { .init() }
 
-    public enum Error: Swift.Error, Equatable {
+    public enum Error: Swift::Error, Equatable {
         case expectedPrefix
         case expectedName(RFC_9110.Token.Error)
         case invalidTokenValue(RFC_9110.Token.Error)
